@@ -1,29 +1,74 @@
 import pandas as pd
 import numpy as np
+import requests
 from datetime import datetime, timedelta
 
-def get_historical_crypto_prices(coin: str = "BTC", days: int = 30):
-    """
-    주어진 코인에 대한 과거 가격 데이터를 모의로 생성합니다.
-    실제 프로젝트에서는 ccxt 라이브러리나 거래소 API를 사용하여 수집합니다.
-    """
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days)
-    dates = [start_date + timedelta(days=i) for i in range(days)]
+##### 더미
+# def get_historical_crypto_prices(coin: str = "BTC", days: int = 30):
+#     """
+#     주어진 코인에 대한 과거 가격 데이터를 모의로 생성합니다.
+#     실제 프로젝트에서는 ccxt 라이브러리나 거래소 API를 사용하여 수집합니다.
+#     """
+#     end_date = datetime.now()
+#     start_date = end_date - timedelta(days=days)
+#     dates = [start_date + timedelta(days=i) for i in range(days)]
+#
+#     # 가상의 종가(close price) 데이터 생성 (임의의 변동성을 가집니다)
+#     base_price = 40000.0 if coin == "BTC" else 2500.0 # 초기 가격 설정
+#     prices = [base_price + np.random.randn() * 1000 for _ in range(days)]
+#     prices = np.array(prices).cumsum() + base_price # 누적합으로 시계열처럼 보이게
+#
+#     # 양수 값만 가지도록 조정
+#     prices = np.maximum(prices, 1000.0)
+#
+#     df = pd.DataFrame({
+#         'date': dates,
+#         'close': prices
+#     })
+#     df['date'] = df['date'].dt.date # 날짜만 유지
+#     return df
 
-    # 가상의 종가(close price) 데이터 생성 (임의의 변동성을 가집니다)
-    base_price = 40000.0 if coin == "BTC" else 2500.0 # 초기 가격 설정
-    prices = [base_price + np.random.randn() * 1000 for _ in range(days)]
-    prices = np.array(prices).cumsum() + base_price # 누적합으로 시계열처럼 보이게
+###### 빗썸 데이터
+def get_historical_crypto_prices(coin: str = "BTC", days: int = 360):
+    """
+    빗썸 공용 API를 사용하여 주어진 코인의 과거 가격 데이터를 가져옵니다.
+    빗썸 API에서 하루 단위 과거 가격 데이터를 직접 제공하지 않으므로,
+    최근 'days'일간의 종가(close price)를 현재 시점에서 하루 단위로 조회하여 모읍니다.
+    주의: 빗썸 API 호출 제한 및 속도 고려 필요.
+    """
+    # 빗썸 코인 마켓 코드 예: BTC -> BTC_KRW, ETH -> ETH_KRW
+    symbol = coin.upper() + "_KRW"
 
-    # 양수 값만 가지도록 조정
-    prices = np.maximum(prices, 1000.0)
+    prices = []
+    dates = []
+
+    for i in range(days):
+        # 조회할 날짜: 오늘로부터 i일 전
+        target_date = datetime.now() - timedelta(days=days - i)
+        date_str = target_date.strftime("%Y%m%d")  # YYYYMMDD 형식
+
+        # 빗썸 일별 거래 데이터 API (없으므로, 빗썸는 과거 캔들 데이터 직접 제공 안함)
+        # 그래서 대체로 현재가만 제공하므로, 일별 과거 데이터는 외부 DB나 다른 API 필요
+        # 여기서는 예시로 최근 현재가만 반복하여 동일값 사용 (참고용)
+
+        # 정상 구현 시, 외부 데이터 소스 혹은 캔들 데이터 API를 사용하는 게 좋음
+
+        resp = requests.get(f"https://api.bithumb.com/public/ticker/{symbol}")
+        data = resp.json()
+
+        if data['status'] == '0000':
+            close_price = float(data['data']['closing_price'])
+        else:
+            close_price = None
+
+        dates.append(target_date.date())
+        prices.append(close_price)
 
     df = pd.DataFrame({
         'date': dates,
         'close': prices
     })
-    df['date'] = df['date'].dt.date # 날짜만 유지
+
     return df
 
 def get_recent_news_data(days: int = 1):
